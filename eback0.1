@@ -1,0 +1,37 @@
+#!/bin/sh
+
+# Set Password for root
+PASS=
+EMAIL=
+
+# Set Backup directory
+BAK_DIR="/root/backnmp/enmp"
+
+# Begin
+clear
+echo " "
+echo " "
+echo "Running the eback script now ..."
+# Check mysql
+if ! which mysql; then
+	echo "Error: You have never install mysql!"
+elif which mysqldump && [ -n "$PASS" ]; then
+		
+	BAK_NAME=backup_`date +%Y%m%d_%H%M_%S`
+
+	mkdir -p $BAK_DIR 
+        echo "Export databases..."
+        /usr/bin/mysqldump -uroot -p$PASS -P3306 --all-databases --add-drop-database --add-drop-table --allow-keywords \
+	 --no-create-info --skip-comments --extended-insert --compact \
+         --set-charset --default-character-set=utf8 --add-locks > $BAK_NAME.sql
+	mv $BAK_NAME.sql $BAK_DIR
+	echo -e "Backup Success."
+fi
+if [ -n  "$EMAIL" ]; then
+	echo "Send the sql script to $EMAIL"
+	echo "Backup Mysql at time `date +%Y-%m-%d_%H:%M:%S`, more in  http://ahuang.org" | /usr/bin/mutt -s "$BAK_NAME.SQL" $EMAIL -a $BAK_DIR/$BAK_NAME.sql
+	rm -f sent
+fi
+echo -e "Visit \e[0;32mhttp://ahuang.org\e[0m for more information."
+echo " "
+echo " "

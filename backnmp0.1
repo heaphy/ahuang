@@ -1,0 +1,185 @@
+#! /bin/sh
+PATH=/bin:/sbin:/usr/bin:/usr/sbin:/usr/local/bin:/usr/local/sbin:~/bin
+export PATH
+
+# Check if user is root
+if [ $(id -u) != "0" ]; then
+    echo "Error: You must be root to run this script!"
+    exit 1
+fi 
+
+# Check installed
+yum -y install sed crontabs vixie-cron chkconfig ftp mutt wget
+/etc/init.d/crond restart
+chkconfig --add crond
+
+clear
+THE_WAY="4"
+BAK="/root/backnmp"
+echo "  ========================================================"
+echo "         Backnmp v0.1 for Linux, Written by Heaphy"
+echo "  " 
+echo -e "    For more information please visit \e[0;32mhttp://ahuang.org/\e[m"
+echo "  ========================================================"
+echo "  "
+echo " "
+echo "Choose the way you will backup your lnmp data:"
+echo "1.  Backup all data for lnmp with it's default setting,"
+echo "    this will backup mysql database-files, wwwroot, configure-files."
+echo "2.  Backup databases as SQL scripts,"
+echo "    this will only backup the databases and gets SQL files."
+echo "3.  BOTH of 1 and 2."
+echo "4.  Exit."
+read -p "Input number you choose (default is 4):" THE_WAY
+echo "  "
+echo " "
+
+# function crontab
+function_crontab()
+{
+	CRONDSHELL=$1
+	TIMES=""
+	TIME=""
+	echo "Input some days in a week to run this script,"
+	while [ "$TIME" != "0" ]
+	do
+		read -p "pick one day like 1,2,3,4,5,6,7 (0 to stop):" TIME
+		if [ "$TIME" -le 0 ] || [ "$TIME" -gt 7 ]; then
+			break
+		else
+			if [ -n "$TIMES" ]; then
+				TIMES=","$TIMES
+			fi
+			TIMES=$TIME$TIMES
+		fi
+	done
+	TIMES=`echo $TIMES | rev`
+cat >> /etc/crontab <<EOF
+0 0 * * $TIMES root $CRONDSHELL
+EOF
+
+}
+
+# function fback
+function_fback()
+{
+	mkdir -p $BAK
+	if [ -f "$BAK/fback0.1" ]; then
+		rm -f $BAK/fback0.1
+	fi
+	wget -c "http://file.ahuang.org/backnmp/1/centos/fback0.1" -P $BAK/
+	chmod +x $BAK/*
+
+	FTP_HOST=""
+	FTP_USER=""
+	FTP_PASS=""
+	echo "Q 1.1:  Set the ftp-server information,"
+	echo "    the target server must have installed PureFtp or VsFTPD,"
+	echo "    if you make any next questions empty, you will only backup files."
+	read -p "Input the ip or hostname of the target server (default is empty):" FTP_HOST
+	read -p "Input the ftp's username of the target server (default is empty):" FTP_USER
+	read -p "Input the $FTP_USER's password in the ftp server (default is empty):" FTP_PASS
+	if [ -n "$FTP_HOST" ] && [ -n "$FTP_USER" ] && [ -n "$FTP_PASS" ]; then
+		sed -i "s/FTP_HOST=/FTP_HOST=$FTP_HOST/g" $BAK/fback0.1
+		sed -i "s/FTP_USER=/FTP_USER=$FTP_USER/g" $BAK/fback0.1
+		sed -i "s/FTP_PASS=/FTP_PASS=$FTP_PASS/g" $BAK/fback0.1
+	fi
+	echo " "
+	echo " "
+	AUTORUN=""
+	while [ "$AUTORUN" != "y" ] && [ "$AUTORUN" != "n" ]
+	do
+		read -p "Q 1.2: Run this script Automatic? (y/n):" AUTORUN
+	done
+	if [ "$AUTORUN" = "y" ]; then
+		function_crontab $BAK/fback0.1
+	fi
+	echo " "
+	echo " "
+	AUTO_CLEAN=""
+	echo "Q 1.3: Do you want to delete the backup file in localhost after ftp it,"
+	echo "    if you input 'yes', the backup file will be deleted automatic,"
+	read -p "    I suggest delete the back files by yourself(default empty:)" AUTO_CLEAN
+	if [ -n "$AUTO_CLEAN" ]; then
+		sed -i "s/AUTO_CLEAN=/AUTO_CLEAN=yes/g" $BAK/fback0.1
+	fi
+	echo " "
+	echo " "
+	RUNNOW=""
+	while [ "$RUNNOW" != "y" ] && [ "$RUNNOW" != "n" ]
+	do
+		read -p "Q 1.4: Do you want to run this srcipt now (y/n):" RUNNOW
+	done
+	if [ "$RUNNOW" = "y" ]; then
+		sh $BAK/fback0.1
+	else
+		echo -e "Success, Visit \e[0;32mahuang.org\e[m for more information"
+		echo " "
+		echo " "
+	fi
+	
+}
+
+# function eback
+function_eback()
+{
+	mkdir -p $BAK
+        if [ -f "$BAK/eback0.1" ]; then
+                rm -f $BAK/eback0.1
+        fi
+        wget -c "http://file.ahuang.org/backnmp/1/centos/eback0.1" -P $BAK/
+        chmod +x $BAK/*
+
+	if ! which mysql; then
+		echo "Error: no MySQL installd !"
+		exit
+	fi
+
+	PASS=""
+	read -p "Q 2.1: Input your password for root in mysql ( empty to stop ):" PASS
+	if [  ! -n "$PASS" ]; then
+		exit
+	fi
+	sed -i "s/PASS=/PASS=$PASS/g" $BAK/eback0.1
+	echo " "
+	echo " "
+	EMAIL=""
+	read -p "Q 2.2: Input your email to get the Sql Script ( empty not mail):" EMAIL
+	if [ -n "$PASS" ]; then
+		sed -i "s/EMAIL=/EMAIL=$EMAIL/g" $BAK/eback0.1
+	fi
+	echo " "
+	echo " "
+	AUTORUN=""
+        while [ "$AUTORUN" != "y" ] && [ "$AUTORUN" != "n" ]
+        do
+                read -p "Q 2.3: Run this script Automatic? (y/n):" AUTORUN
+        done
+        if [ "$AUTORUN" = "y" ]; then
+                function_crontab $BAK/eback0.1
+        fi
+        echo " "
+        echo " "
+        RUNNOW=""
+        while [ "$RUNNOW" != "y" ] && [ "$RUNNOW" != "n" ]
+        do
+                read -p "Q 2.4: Do you want to run this srcipt now (y/n):" RUNNOW
+        done
+        if [ "$RUNNOW" = "y" ]; then
+                sh $BAK/eback0.1
+        else
+                echo -e "Success, Visit \e[0;32mahuang.org\e[m for more information"
+		echo " "
+		echo " "
+        fi
+}
+if [ "$THE_WAY" = "1" ]; then
+	function_fback
+elif [ "$THE_WAY" = "2" ]; then
+	function_eback
+elif [ "$THE_WAY" = "3" ]; then
+	function_fback
+	function_eback
+else
+	exit
+fi
