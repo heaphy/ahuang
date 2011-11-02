@@ -1,0 +1,10 @@
+mkdir ~/Hello-World
+cd ~/Hello-World
+git init
+touch README
+
+git add README
+git commit -m "coment"
+
+git remote add origin git@github.com:heaphy/ahuang.git
+git push origin master
